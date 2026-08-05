@@ -1,0 +1,124 @@
+services:
+  superset:
+    image: apache/superset
+    container_name: superset
+
+    ports:
+      - "8088:8088"
+
+    environment:
+      SUPERSET_SECRET_KEY: northwind-secret-key
+
+    volumes:
+      - superset_home:/app/superset_home
+
+    depends_on:
+      - warehouse
+
+    networks:
+      - data-platform
+  
+  db:
+    image: postgres:16
+    container_name: db
+
+    environment:
+      POSTGRES_DB: northwind
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+    ports:
+      - "55432:5432"
+
+    volumes:
+      - source_data:/var/lib/postgresql/data
+      - ./infrastructure/source/northwind.sql:/docker-entrypoint-initdb.d/northwind.sql
+
+    networks:
+      - data-platform
+
+  warehouse:
+    image: postgres:16
+    container_name: postgres-warehouse
+
+    environment:
+      POSTGRES_DB: warehouse
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+    ports:
+      - "55433:5432"
+
+    volumes:
+      - warehouse_data:/var/lib/postgresql/data
+      - ./infrastructure/warehouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    networks:
+      - data-platform
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: pgadmin4@pgadmin.org
+      PGADMIN_DEFAULT_PASSWORD: postgres
+      PGADMIN_LISTEN_PORT: 5050
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+
+    ports:
+      - "5050:5050"
+
+    volumes:
+      - pgadmin_root:/root/.pgadmin
+      - pgadmin_data:/var/lib/pgadmin
+
+    depends_on:
+      - db
+      - warehouse
+
+    networks:
+      - data-platform
+
+  dbt:
+    build:
+      context: ./dbt
+      dockerfile: Dockerfile
+
+    container_name: dbt
+
+    working_dir: /workspace
+
+    command: tail -f /dev/null
+
+    volumes:
+      - .:/workspace
+
+    depends_on:
+      - warehouse
+
+    networks:
+      - data-platform
+
+networks:
+  data-platform:
+    driver: bridge
+
+volumes:
+  source_data:
+    external: true
+    name: source_postgresql_data
+
+  warehouse_data:
+    external: true
+    name: warehouse_warehouse_data
+
+  pgadmin_root:
+    external: true
+    name: source_pgadmin_root_prefs
+
+  pgadmin_data:
+    external: true
+    name: source_pgadmin_working_dir
+
+  superset_home:

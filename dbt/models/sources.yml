@@ -1,0 +1,22 @@
+version: 2
+
+sources:
+  - name: bronze
+    database: warehouse
+    schema: bronze
+
+    tables:
+      - name: categories
+      - name: customer_customer_demo
+      - name: customer_demographics
+      - name: customers
+      - name: employee_territories
+      - name: employees
+      - name: order_details
+      - name: orders
+      - name: products
+      - name: region
+      - name: shippers
+      - name: suppliers
+      - name: territories
+      - name: us_states
