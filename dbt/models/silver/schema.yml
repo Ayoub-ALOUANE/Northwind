@@ -1,0 +1,200 @@
+version: 2
+
+models:
+  - name: categories
+    columns:
+      - name: category_id
+        tests:
+          - unique
+          - not_null
+
+      - name: category_name
+        tests:
+          - not_null
+
+  - name: customers
+    columns:
+      - name: customer_id
+        tests:
+          - unique
+          - not_null
+
+      - name: company_name
+        tests:
+          - not_null
+
+  - name: employees
+    columns:
+      - name: employee_id
+        tests:
+          - unique
+          - not_null
+
+      - name: first_name
+        tests:
+          - not_null
+
+      - name: last_name
+        tests:
+          - not_null
+
+  - name: employee_territories
+    columns:
+      - name: employee_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('employees')
+                field: employee_id
+
+      - name: territory_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('territories')
+                field: territory_id
+
+  - name: order_details
+    columns:
+      - name: order_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('orders')
+                field: order_id
+
+      - name: product_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('products')
+                field: product_id
+
+  - name: orders
+    columns:
+      - name: order_id
+        tests:
+          - unique
+          - not_null
+
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('customers')
+                field: customer_id
+
+      - name: employee_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('employees')
+                field: employee_id
+
+      - name: ship_via
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('shippers')
+                field: shipper_id
+
+  - name: products
+    columns:
+      - name: product_id
+        tests:
+          - unique
+          - not_null
+
+      - name: category_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('categories')
+                field: category_id
+
+      - name: supplier_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('suppliers')
+                field: supplier_id
+
+      - name: product_name
+        tests:
+          - not_null
+
+  - name: region
+    columns:
+      - name: region_id
+        tests:
+          - unique
+          - not_null
+
+      - name: region_description
+        tests:
+          - not_null
+
+  - name: shippers
+    columns:
+      - name: shipper_id
+        tests:
+          - unique
+          - not_null
+
+      - name: company_name
+        tests:
+          - not_null
+
+  - name: suppliers
+    columns:
+      - name: supplier_id
+        tests:
+          - unique
+          - not_null
+
+      - name: company_name
+        tests:
+          - not_null
+
+      - name: contact_name
+        tests:
+          - not_null
+
+  - name: territories
+    columns:
+      - name: territory_id
+        tests:
+          - unique
+          - not_null
+
+      - name: region_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('region')
+                field: region_id
+
+      - name: territory_description
+        tests:
+          - not_null
+
+  - name: us_states
+    columns:
+      - name: state_id
+        tests:
+          - unique
+          - not_null
+
+      - name: state_name
+        tests:
+          - not_null
