@@ -1,7 +1,9 @@
 SELECT
     shipper_id,
     NULLIF(TRIM(company_name), '') AS company_name,
-    NULLIF(TRIM(phone), '') AS phone
+    NULLIF(TRIM(phone), '') AS phone,
+
+    _airbyte_extracted_at AS loaded_at
 
 FROM {{ source('bronze', 'shippers') }}
 

@@ -13,7 +13,9 @@ SELECT
 
     NULLIF(TRIM(phone), '') AS phone,
     NULLIF(TRIM(fax), '') AS fax,
-    NULLIF(TRIM(homepage), '') AS homepage
+    NULLIF(TRIM(homepage), '') AS homepage,
+
+    _airbyte_extracted_at AS loaded_at
 
 FROM {{ source('bronze', 'suppliers') }}
 

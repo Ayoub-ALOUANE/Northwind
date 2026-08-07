@@ -23,7 +23,9 @@ SELECT
 
     NULLIF(TRIM(notes), '') AS notes,
 
-    reports_to
+    reports_to,
+
+    _airbyte_extracted_at AS loaded_at
 
 FROM {{ source('bronze', 'employees') }}
 

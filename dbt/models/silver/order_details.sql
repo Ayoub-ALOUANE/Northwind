@@ -3,7 +3,9 @@ SELECT
     product_id,
     unit_price,
     quantity,
-    discount
+    discount,
+
+    _airbyte_extracted_at AS loaded_at
 
 FROM {{ source('bronze', 'order_details') }}
 

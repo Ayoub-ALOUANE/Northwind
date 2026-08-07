@@ -16,6 +16,8 @@ SELECT
     TRIM(ship_city) AS ship_city,
     NULLIF(TRIM(ship_region), '') AS ship_region,
     TRIM(ship_postal_code) AS ship_postal_code,
-    TRIM(ship_country) AS ship_country
+    TRIM(ship_country) AS ship_country,
+
+    _airbyte_extracted_at AS loaded_at
 
 FROM {{ source('bronze', 'orders') }}

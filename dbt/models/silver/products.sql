@@ -16,7 +16,9 @@ SELECT
     CASE
         WHEN discontinued = 1 THEN TRUE
         ELSE FALSE
-    END AS discontinued
+    END AS discontinued,
+
+    _airbyte_extracted_at AS loaded_at
 
 FROM {{ source('bronze', 'products') }}
 

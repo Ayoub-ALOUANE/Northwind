@@ -1,7 +1,9 @@
 SELECT
     NULLIF(TRIM(territory_id), '') AS territory_id,
     NULLIF(TRIM(territory_description), '') AS territory_description,
-    region_id
+    region_id,
+
+    _airbyte_extracted_at AS loaded_at
 
 FROM {{ source('bronze', 'territories') }}
 

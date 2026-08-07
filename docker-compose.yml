@@ -18,9 +18,9 @@ services:
     networks:
       - data-platform
   
-  db:
+  postgres-source:
     image: postgres:16
-    container_name: db
+    container_name: postgres-source
 
     environment:
       POSTGRES_DB: northwind
@@ -90,6 +90,9 @@ services:
     working_dir: /workspace
 
     command: tail -f /dev/null
+
+    ports:
+      - "8080:8080"
 
     volumes:
       - .:/workspace

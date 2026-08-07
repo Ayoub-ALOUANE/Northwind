@@ -9,7 +9,8 @@ SELECT
     TRIM(postal_code)   AS postal_code,
     TRIM(country)       AS country,
     TRIM(phone)         AS phone,
-    TRIM(fax)           AS fax
+    TRIM(fax)           AS fax,
+    _airbyte_extracted_at AS loaded_at
 
 FROM {{ source('bronze', 'customers') }}
 

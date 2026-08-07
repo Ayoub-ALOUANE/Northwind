@@ -2,7 +2,8 @@ SELECT
     category_id,
     NULLIF(TRIM(category_name), '') AS category_name,
     NULLIF(TRIM(description), '') AS description,
-    picture
+    picture,
+    _airbyte_extracted_at AS loaded_at
 
 FROM {{ source('bronze', 'categories') }}
 
