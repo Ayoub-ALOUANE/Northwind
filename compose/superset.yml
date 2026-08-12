@@ -1,0 +1,27 @@
+services:
+
+  superset:
+    image: apache/superset
+    container_name: superset
+
+    ports:
+      - "8088:8088"
+
+    environment:
+      SUPERSET_SECRET_KEY: northwind-secret-key
+
+    volumes:
+      - superset_home:/app/superset_home
+
+    depends_on:
+      - warehouse
+
+    networks:
+      - data-platform
+
+networks:
+  data-platform:
+    driver: bridge
+
+volumes:
+  superset_home:

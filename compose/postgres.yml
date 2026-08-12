@@ -1,0 +1,74 @@
+services:
+
+  source:
+    image: postgres:16
+    container_name: postgres-source
+
+    environment:
+      POSTGRES_DB: northwind
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+    ports:
+      - "55432:5432"
+
+    volumes:
+      - source_data:/var/lib/postgresql/data
+      - ./infrastructure/source/northwind.sql:/docker-entrypoint-initdb.d/northwind.sql
+
+    networks:
+      - data-platform
+
+  warehouse:
+    image: postgres:16
+    container_name: postgres-warehouse
+
+    environment:
+      POSTGRES_DB: warehouse
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+    ports:
+      - "55433:5432"
+
+    volumes:
+      - warehouse_data:/var/lib/postgresql/data
+      - ./infrastructure/warehouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    networks:
+      - data-platform
+
+  airflow-db:
+    image: postgres:16
+    container_name: postgres-airflow
+
+    environment:
+      POSTGRES_DB: airflow
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+
+    ports:
+      - "55434:5432"
+
+    volumes:
+      - airflow_data:/var/lib/postgresql/data
+
+    networks:
+      - data-platform
+
+
+
+networks:
+  data-platform:
+    driver: bridge
+
+volumes:
+  source_data:
+    external: true
+    name: source_postgresql_data
+
+  warehouse_data:
+    external: true
+    name: warehouse_warehouse_data
+
+  airflow_data:

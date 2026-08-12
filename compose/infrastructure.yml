@@ -1,0 +1,24 @@
+networks:
+  data-platform:
+    driver: bridge
+
+volumes:
+  source_data:
+    external: true
+    name: source_postgresql_data
+
+  warehouse_data:
+    external: true
+    name: warehouse_warehouse_data
+
+  airflow_data:
+
+  pgadmin_root:
+    external: true
+    name: source_pgadmin_root_prefs
+
+  pgadmin_data:
+    external: true
+    name: source_pgadmin_working_dir
+
+  superset_home:
