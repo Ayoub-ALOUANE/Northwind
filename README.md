@@ -132,7 +132,7 @@ The source PostgreSQL database contains the classic **Northwind** schema — 13 
 All transformations are version-controlled SQL models with full lineage tracked by dbt.
 
 <div align="center">
-<img src="docs/fig_14_dbt_dag_full_lineage.png" width="90%" alt="dbt DAG Lineage"/>
+<img src="docs/fig_25_dbt_docs_lineage_focus.png" width="90%" alt="dbt DAG Lineage"/>
 <br/><sub>🔗 Full dbt lineage graph — Bronze to Gold</sub>
 </div>
 
