@@ -379,7 +379,6 @@ AIRFLOW__CORE__FERNET_KEY=your_fernet_key
 
 **Ayoub Alouane**  
 Data Engineering Intern · ENSET Mohammedia  
-Supervised by **Youssef Fatih** · [Tython](https://tython.co)
 
 <br/>
 
