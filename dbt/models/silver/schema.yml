@@ -2,199 +2,360 @@ version: 2
 
 models:
   - name: categories
+    description: >
+      Silver view of the categories bronze table. Provides product category
+      groupings (Beverages, Seafood, etc.) used to enrich dim_products.
     columns:
       - name: category_id
-        tests:
-          - unique
-          - not_null
-
+        description: Primary key for the product category.
+        tests: [unique, not_null]
       - name: category_name
-        tests:
-          - not_null
+        description: Name of the category (e.g. Beverages, Condiments, Seafood).
+        tests: [not_null]
+      - name: description
+        description: Free-text description of the category.
+      - name: loaded_at
+        description: Timestamp when Airbyte extracted this row from the source.
 
   - name: customers
+    description: >
+      Silver view of the customers bronze table. One row per customer.
+      All string fields are TRIM-cleaned. The filter removes rows with
+      a NULL or blank customer_id or company_name.
     columns:
       - name: customer_id
-        tests:
-          - unique
-          - not_null
-
+        description: Five-character customer code (natural key, e.g. ALFKI).
+        tests: [unique, not_null]
       - name: company_name
-        tests:
-          - not_null
+        description: Customer company name.
+        tests: [not_null]
+      - name: contact_name
+        description: Primary contact at the customer.
+      - name: contact_title
+        description: Job title of the primary contact.
+      - name: address
+        description: Street address.
+      - name: city
+        description: City.
+      - name: region
+        description: State or regional subdivision (may be NULL for non-US customers).
+      - name: postal_code
+        description: Postal or ZIP code.
+      - name: country
+        description: Country of the customer.
+      - name: phone
+        description: Phone number.
+      - name: fax
+        description: Fax number.
+      - name: loaded_at
+        description: Airbyte extraction timestamp used for source freshness monitoring.
 
   - name: employees
+    description: >
+      Silver view of the employees bronze table. Includes full employee contact info,
+      hire/birth dates, and the reports_to self-reference for the management hierarchy.
     columns:
       - name: employee_id
-        tests:
-          - unique
-          - not_null
-
+        description: Integer primary key for the employee.
+        tests: [unique, not_null]
       - name: first_name
-        tests:
-          - not_null
-
+        description: Employee first name.
+        tests: [not_null]
       - name: last_name
-        tests:
-          - not_null
+        description: Employee last name.
+        tests: [not_null]
+      - name: title
+        description: Job title (e.g. Sales Representative, Vice President Sales).
+      - name: title_of_courtesy
+        description: Salutation (Mr., Ms., Dr., etc.).
+      - name: birth_date
+        description: Date of birth.
+      - name: hire_date
+        description: Date the employee was hired.
+      - name: address
+        description: Home street address.
+      - name: city
+        description: Home city.
+      - name: region
+        description: Home state or region.
+      - name: postal_code
+        description: Home postal code.
+      - name: country
+        description: Home country.
+      - name: home_phone
+        description: Home phone number.
+      - name: extension
+        description: Office phone extension.
+      - name: photo
+        description: Binary photo data (raw column, not used in downstream models).
+      - name: photo_path
+        description: File path to the employee photo.
+      - name: notes
+        description: Biographical notes about the employee.
+      - name: reports_to
+        description: employee_id of this employee's direct manager. NULL for top-level executives.
+      - name: loaded_at
+        description: Airbyte extraction timestamp.
 
   - name: employee_territories
+    description: >
+      Silver view of the employee_territories junction table.
+      Resolves the many-to-many relationship between employees and sales territories.
     columns:
       - name: employee_id
+        description: Foreign key to employees.
         tests:
           - not_null
           - relationships:
-              arguments:
-                to: ref('employees')
-                field: employee_id
-
+              to: ref('employees')
+              field: employee_id
       - name: territory_id
+        description: Foreign key to territories.
         tests:
           - not_null
           - relationships:
-              arguments:
-                to: ref('territories')
-                field: territory_id
+              to: ref('territories')
+              field: territory_id
+      - name: loaded_at
+        description: Airbyte extraction timestamp.
 
   - name: order_details
+    description: >
+      Silver view of the order_details bronze table.
+      One row per order line item (order + product combination).
+      Filters out rows with NULL order/product IDs, zero/negative quantities,
+      negative prices, or discounts outside the 0–1 range.
     columns:
       - name: order_id
+        description: Foreign key to orders.
         tests:
           - not_null
           - relationships:
-              arguments:
-                to: ref('orders')
-                field: order_id
-
+              to: ref('orders')
+              field: order_id
       - name: product_id
+        description: Foreign key to products.
         tests:
           - not_null
           - relationships:
-              arguments:
-                to: ref('products')
-                field: product_id
+              to: ref('products')
+              field: product_id
+      - name: unit_price
+        description: Price per unit at time of order (may differ from current product list price).
+        tests:
+          - not_null
+          - assert_column_is_between:
+              min_value: 0
+              max_value: 9999
+      - name: quantity
+        description: Number of units ordered on this line.
+        tests:
+          - not_null
+          - assert_column_is_between:
+              min_value: 1
+              max_value: 9999
+      - name: discount
+        description: Fractional discount applied (0.0 = none, 0.15 = 15% off).
+        tests:
+          - not_null
+          - assert_column_is_between:
+              min_value: 0
+              max_value: 1
+      - name: loaded_at
+        description: Airbyte extraction timestamp.
 
   - name: orders
+    description: >
+      Silver view of the orders bronze table. One row per order header.
+      Contains dates, the assigned employee, the shipper, freight cost,
+      and the ship-to address.
     columns:
       - name: order_id
-        tests:
-          - unique
-          - not_null
-
+        description: Primary key for the order.
+        tests: [unique, not_null]
       - name: customer_id
+        description: Foreign key to customers.
         tests:
           - not_null
           - relationships:
-              arguments:
-                to: ref('customers')
-                field: customer_id
-
+              to: ref('customers')
+              field: customer_id
       - name: employee_id
+        description: Foreign key to employees — the rep who handled the order.
         tests:
           - not_null
           - relationships:
-              arguments:
-                to: ref('employees')
-                field: employee_id
-
+              to: ref('employees')
+              field: employee_id
+      - name: order_date
+        description: Date the order was placed.
+      - name: required_date
+        description: Date the customer requested delivery by.
+      - name: shipped_date
+        description: Actual date the order was shipped. NULL if not yet shipped.
       - name: ship_via
+        description: Foreign key to shippers — the carrier used.
         tests:
           - not_null
           - relationships:
-              arguments:
-                to: ref('shippers')
-                field: shipper_id
+              to: ref('shippers')
+              field: shipper_id
+      - name: freight
+        description: Shipping charge for the order.
+      - name: ship_name
+        description: Ship-to recipient name.
+      - name: ship_address
+        description: Ship-to street address.
+      - name: ship_city
+        description: Ship-to city.
+      - name: ship_region
+        description: Ship-to state or region (NULL for many non-US orders).
+      - name: ship_postal_code
+        description: Ship-to postal code.
+      - name: ship_country
+        description: Ship-to country.
+      - name: loaded_at
+        description: Airbyte extraction timestamp.
 
   - name: products
+    description: >
+      Silver view of the products bronze table. One row per product.
+      The discontinued column is cast from integer (0/1) to boolean.
     columns:
       - name: product_id
-        tests:
-          - unique
-          - not_null
-
-      - name: category_id
-        tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('categories')
-                field: category_id
-
-      - name: supplier_id
-        tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('suppliers')
-                field: supplier_id
-
+        description: Primary key for the product.
+        tests: [unique, not_null]
       - name: product_name
+        description: Name of the product.
+        tests: [not_null]
+      - name: supplier_id
+        description: Foreign key to suppliers.
         tests:
           - not_null
+          - relationships:
+              to: ref('suppliers')
+              field: supplier_id
+      - name: category_id
+        description: Foreign key to categories.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('categories')
+              field: category_id
+      - name: quantity_per_unit
+        description: Packaging description (e.g. "12 - 1 lb pkgs.").
+      - name: unit_price
+        description: Current list price per unit.
+        tests:
+          - not_null
+          - assert_column_is_between:
+              min_value: 0
+              max_value: 99999
+      - name: units_in_stock
+        description: Current inventory quantity.
+      - name: units_on_order
+        description: Units on open purchase orders from the supplier.
+      - name: reorder_level
+        description: Minimum stock threshold before reordering.
+      - name: discontinued
+        description: Boolean — TRUE if this product is no longer sold.
+      - name: loaded_at
+        description: Airbyte extraction timestamp.
 
   - name: region
+    description: Silver view of the region table. High-level geographic groupings.
     columns:
       - name: region_id
-        tests:
-          - unique
-          - not_null
-
+        description: Primary key for the region.
+        tests: [unique, not_null]
       - name: region_description
-        tests:
-          - not_null
+        description: Region name (Eastern, Western, Northern, Southern).
+        tests: [not_null]
+      - name: loaded_at
+        description: Airbyte extraction timestamp.
 
   - name: shippers
+    description: Silver view of the shippers table. Three carriers in Northwind.
     columns:
       - name: shipper_id
-        tests:
-          - unique
-          - not_null
-
+        description: Primary key for the shipper.
+        tests: [unique, not_null]
       - name: company_name
-        tests:
-          - not_null
+        description: Carrier company name (e.g. Federal Shipping, Speedy Express).
+        tests: [not_null]
+      - name: phone
+        description: Carrier phone number.
+      - name: loaded_at
+        description: Airbyte extraction timestamp.
 
   - name: suppliers
+    description: >
+      Silver view of the suppliers bronze table. One row per supplier.
+      Includes full contact and address information.
     columns:
       - name: supplier_id
-        tests:
-          - unique
-          - not_null
-
+        description: Primary key for the supplier.
+        tests: [unique, not_null]
       - name: company_name
-        tests:
-          - not_null
-
+        description: Supplier company name.
+        tests: [not_null]
       - name: contact_name
-        tests:
-          - not_null
+        description: Primary contact at the supplier.
+        tests: [not_null]
+      - name: contact_title
+        description: Job title of the primary contact.
+      - name: address
+        description: Supplier street address.
+      - name: city
+        description: Supplier city.
+      - name: region
+        description: Supplier state or region.
+      - name: postal_code
+        description: Supplier postal code.
+      - name: country
+        description: Supplier country.
+      - name: phone
+        description: Supplier phone number.
+      - name: fax
+        description: Supplier fax number.
+      - name: homepage
+        description: Supplier website URL.
+      - name: loaded_at
+        description: Airbyte extraction timestamp.
 
   - name: territories
+    description: >
+      Silver view of the territories table. Named sales territories
+      linked to regions via region_id.
     columns:
       - name: territory_id
-        tests:
-          - unique
-          - not_null
-
+        description: Primary key for the territory (alphanumeric code).
+        tests: [unique, not_null]
+      - name: territory_description
+        description: Human-readable territory name.
+        tests: [not_null]
       - name: region_id
+        description: Foreign key to the region this territory belongs to.
         tests:
           - not_null
           - relationships:
-              arguments:
-                to: ref('region')
-                field: region_id
-
-      - name: territory_description
-        tests:
-          - not_null
+              to: ref('region')
+              field: region_id
+      - name: loaded_at
+        description: Airbyte extraction timestamp.
 
   - name: us_states
+    description: US state reference data. Used for address normalization lookups.
     columns:
       - name: state_id
-        tests:
-          - unique
-          - not_null
-
+        description: Primary key for the US state.
+        tests: [unique, not_null]
       - name: state_name
-        tests:
-          - not_null
+        description: Full state name.
+        tests: [not_null]
+      - name: state_abbr
+        description: Two-letter state abbreviation.
+      - name: state_region
+        description: US Census region the state belongs to.
+      - name: loaded_at
+        description: Airbyte extraction timestamp.

@@ -2,21 +2,56 @@ version: 2
 
 sources:
   - name: bronze
-    database: warehouse
+    description: >
+      Raw tables replicated from the Northwind OLTP source database by Airbyte.
+      This is the landing zone (Bronze layer) of the medallion architecture —
+      data is copied as-is, with Airbyte metadata columns appended.
+    database: "{{ env_var('SNOWFLAKE_DATABASE', target.database) }}"
     schema: bronze
+    loaded_at_field: _airbyte_extracted_at
+    freshness:
+      warn_after:  { count: 12, period: hour }
+      error_after: { count: 24, period: hour }
 
     tables:
       - name: categories
+        description: Product category groupings (e.g. Beverages, Seafood).
+
       - name: customer_customer_demo
+        description: Many-to-many link between customers and customer demographic types.
+
       - name: customer_demographics
+        description: Demographic type definitions for customer segmentation.
+
       - name: customers
+        description: Customer contact, address, and company information.
+
       - name: employee_territories
+        description: Junction table mapping employees to their assigned sales territories.
+
       - name: employees
+        description: Employee records including contact info, dates, and manager hierarchy.
+
       - name: order_details
+        description: Line-item detail for each order — product, quantity, unit price, and discount.
+
       - name: orders
+        description: Order header records with dates, shipping destination, and carrier.
+
       - name: products
+        description: Product catalog with pricing, stock levels, and reorder thresholds.
+
       - name: region
+        description: High-level regional groupings used to organize sales territories.
+
       - name: shippers
+        description: Shipping carrier contact information.
+
       - name: suppliers
+        description: Supplier company and contact details.
+
       - name: territories
+        description: Named sales territories linked to regions.
+
       - name: us_states
+        description: US state reference data used for address normalization.

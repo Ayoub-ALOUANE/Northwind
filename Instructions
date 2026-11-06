@@ -1,0 +1,98 @@
+# ==============================================================================
+# NORTHWIND DATA PLATFORM — QUICK INSTRUCTIONS & DEMO GUIDE
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. ACCESS & URLS
+# ------------------------------------------------------------------------------
+# Airbyte UI:      http://localhost:8000  (Self-hosted ELT pipeline platform)
+# Airflow UI:      http://localhost:8081  (User: admin / Password: check docker compose logs airflow-api-server )
+# Superset BI:     http://localhost:8088  (User: admin / Password: admin)
+# dbt Docs UI:     http://localhost:8085  (Interactive data lineage & documentation)
+# pgAdmin GUI:     http://localhost:5051  (pgadmin4@pgadmin.org / postgres)
+# Cloud Warehouse: Snowflake              (Database: NORTHWIND, Schemas: BRONZE, SILVER, GOLD)
+# Source DB:       localhost:55432        (postgres / postgres, db: northwind)
+
+
+# ------------------------------------------------------------------------------
+# 2. START / STOP PLATFORM
+# ------------------------------------------------------------------------------
+
+# Start all services
+docker compose up -d
+
+# Check running services
+docker compose ps
+
+# View container logs (all services)
+docker compose logs -f
+
+# View live OLTP generator streaming transactions inside the source database
+docker compose logs -f source
+
+
+# Stop all services (data is preserved)
+docker compose down
+
+
+# ------------------------------------------------------------------------------
+# 3. RUN THE DBT PIPELINE (STEP-BY-STEP)
+# ------------------------------------------------------------------------------
+
+# Step A: Load reference seeds (country mapping, discount tiers)
+docker compose exec airflow-scheduler bash -c "cd /opt/airflow/dbt && dbt --log-path /tmp/dbt-logs seed --profiles-dir /opt/airflow/dbt/profiles"
+
+# Step B: Build all models (12 Silver views + 13 Gold star & mart tables)
+docker compose exec airflow-scheduler bash -c "cd /opt/airflow/dbt && dbt --log-path /tmp/dbt-logs run --profiles-dir /opt/airflow/dbt/profiles"
+
+# Step C: Run SCD Type 2 history snapshots (customers, products, orders)
+docker compose exec airflow-scheduler bash -c "cd /opt/airflow/dbt && dbt --log-path /tmp/dbt-logs snapshot --profiles-dir /opt/airflow/dbt/profiles"
+
+# Step D: Run all 121 automated data quality tests
+docker compose exec airflow-scheduler bash -c "cd /opt/airflow/dbt && dbt --log-path /tmp/dbt-logs test --profiles-dir /opt/airflow/dbt/profiles"
+
+
+# ------------------------------------------------------------------------------
+# 4. LIVE PRESENTATION SHOWCASE (RUN THESE IN TERMINAL)
+# ------------------------------------------------------------------------------
+
+# 1. Customer RFM Segmentation (Champions, Loyal, At Risk, Lost)
+docker compose exec -T warehouse psql -U postgres -d warehouse -c "
+SELECT customer_segment, count(*), round(avg(total_net_revenue)::numeric, 2) AS avg_revenue
+FROM gold.mart_customer_segments
+GROUP BY customer_segment ORDER BY avg_revenue DESC;
+"
+
+# 2. Top Products & Stock Status
+docker compose exec -T warehouse psql -U postgres -d warehouse -c "
+SELECT product_name, category_name, list_price, avg_selling_price, lifetime_units_sold, stock_status
+FROM gold.mart_product_performance
+ORDER BY lifetime_units_sold DESC LIMIT 5;
+"
+
+# 3. Warehouse Table Counts (Proves all 13 Gold tables are loaded)
+docker compose exec -T warehouse psql -U postgres -d warehouse -c "
+SELECT table_name, (xpath('/row/cnt/text()', xml_count))[1]::text::int as rows
+FROM (
+  SELECT table_name, query_to_xml(format('select count(*) as cnt from gold.%I', table_name), false, true, '') as xml_count
+  FROM information_schema.tables WHERE table_schema = 'gold'
+) t ORDER BY rows DESC;
+"
+
+
+# ------------------------------------------------------------------------------
+# 5. AIRFLOW ORCHESTRATION
+# ------------------------------------------------------------------------------
+
+# Trigger the full dbt pipeline from CLI
+docker compose exec airflow-scheduler airflow dags trigger northwind_dbt_pipeline
+
+# Check DAG status
+docker compose exec airflow-scheduler airflow dags list-runs -d northwind_dbt_pipeline --limit 3
+
+
+# ------------------------------------------------------------------------------
+# 6. EMERGENCY FIX (IF WINDOWS PERMISSION ERROR)
+# ------------------------------------------------------------------------------
+# Run this if dbt ever gives a "Permission denied" error on volume mounts:
+docker compose exec -u root airflow-scheduler bash -c "chmod -R 777 /opt/airflow/dbt"

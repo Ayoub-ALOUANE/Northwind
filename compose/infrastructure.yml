@@ -20,5 +20,12 @@ volumes:
   pgadmin_data:
     external: true
     name: source_pgadmin_working_dir
-
   superset_home:
+
+  airbyte_db_data:
+    name: airbyte_db_data
+  airbyte_workspace:
+    name: airbyte_workspace
+  airbyte_data:
+    name: airbyte_data
+

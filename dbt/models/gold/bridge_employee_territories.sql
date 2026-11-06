@@ -5,7 +5,9 @@ SELECT
     te.territory_description,
 
     re.region_id,
-    re.region_description
+    re.region_description,
+    
+    {{dbt_utils.generate_surrogate_key(['empt.employee_id', 'empt.territory_id', 're.region_id'])}} bridge_employee_territories_surrogate_key
     
 FROM {{ ref('employee_territories') }} as empt
 LEFT JOIN {{ ref('territories') }} AS te

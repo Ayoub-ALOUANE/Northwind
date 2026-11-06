@@ -1,8 +1,12 @@
 services:
 
   source:
-    image: postgres:16
+    build:
+      context: ../infrastructure/source
+      dockerfile: Dockerfile
+    image: northwind-postgres-source:latest
     container_name: postgres-source
+    command: ["postgres", "-c", "wal_level=logical"]
 
     environment:
       POSTGRES_DB: northwind
@@ -14,10 +18,12 @@ services:
 
     volumes:
       - source_data:/var/lib/postgresql/data
-      - ./infrastructure/source/northwind.sql:/docker-entrypoint-initdb.d/northwind.sql
+      - ../infrastructure/source/northwind.sql:/docker-entrypoint-initdb.d/northwind.sql
+      - ../scripts/data_generator.py:/opt/generator/data_generator.py
 
     networks:
       - data-platform
+
 
   warehouse:
     image: postgres:16

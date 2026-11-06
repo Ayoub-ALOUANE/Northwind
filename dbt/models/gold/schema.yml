@@ -2,120 +2,370 @@ version: 2
 
 models:
 
-  - name: bridge_employee_territories
-
-    tests:
-      - dbt_utils.unique_combination_of_columns:
-          arguments:
-            combination_of_columns:
-              - employee_id
-              - territory_id
-
-    columns:
-      - name: employee_id
-        tests:
-          - not_null
-
-      - name: territory_id
-        tests:
-          - not_null
-
-  - name: dim_customers
-    columns:
-      - name: customer_id
-        tests:
-          - unique
-          - not_null
-
-  - name: dim_date
-    columns:
-      - name: date_id
-        tests:
-          - unique
-          - not_null
-
-  - name: dim_employees
-    columns:
-      - name: employee_id
-        tests:
-          - unique
-          - not_null
-
-  - name: dim_products
-    columns:
-      - name: product_id
-        tests:
-          - unique
-          - not_null
-
-  - name: dim_shippers
-    columns:
-      - name: shipper_id
-        tests:
-          - unique
-          - not_null
-
+  # ── fact_sales ───────────────────────────────────────────────────────────────
   - name: fact_sales
+    description: >
+      Central fact table at the grain of one row per order line item (order_id + product_id).
+      Contains raw measures (quantity, unit_price, discount) and derived revenue metrics
+      (gross_revenue, net_revenue, discount_amount), plus shipping performance flags.
+      All date foreign keys join to dim_date.
 
     tests:
       - dbt_utils.unique_combination_of_columns:
-          arguments:
-            combination_of_columns:
-              - order_id
-              - product_id
+          combination_of_columns: [order_id, product_id]
 
     columns:
+      - name: fact_sales_sk
+        description: Surrogate key generated from order_id + product_id.
+        tests: [unique, not_null]
 
       - name: order_id
-        tests:
-          - not_null
+        description: Foreign key to the orders table. Groups line items by order.
+        tests: [not_null]
 
       - name: product_id
+        description: Foreign key to dim_products.
         tests:
           - not_null
           - relationships:
-              arguments:
-                to: ref('dim_products')
-                field: product_id
+              to: ref('dim_products')
+              field: product_id
 
       - name: customer_id
+        description: Foreign key to dim_customers.
         tests:
           - relationships:
-              arguments:
-                to: ref('dim_customers')
-                field: customer_id
+              to: ref('dim_customers')
+              field: customer_id
 
       - name: employee_id
+        description: Foreign key to dim_employees — the employee who handled the order.
         tests:
           - relationships:
-              arguments:
-                to: ref('dim_employees')
-                field: employee_id
+              to: ref('dim_employees')
+              field: employee_id
 
       - name: shipper_id
+        description: Foreign key to dim_shippers — the carrier used for this order.
         tests:
           - relationships:
-              arguments:
-                to: ref('dim_shippers')
-                field: shipper_id
+              to: ref('dim_shippers')
+              field: shipper_id
 
       - name: order_date_id
+        description: Date the order was placed. Foreign key to dim_date.
         tests:
           - relationships:
-              arguments:
-                to: ref('dim_date')
-                field: date_id
+              to: ref('dim_date')
+              field: date_id
 
       - name: required_date_id
+        description: Date the customer requested delivery by. Foreign key to dim_date.
         tests:
           - relationships:
-              arguments:
-                to: ref('dim_date')
-                field: date_id
+              to: ref('dim_date')
+              field: date_id
 
       - name: shipped_date_id
+        description: Actual shipment date. NULL if not yet shipped. Foreign key to dim_date.
         tests:
           - relationships:
-              arguments:
-                to: ref('dim_date')
-                field: date_id
+              to: ref('dim_date')
+              field: date_id
+
+      - name: quantity
+        description: Number of units of this product ordered on this line item.
+        tests: [not_null]
+
+      - name: unit_price
+        description: Price per unit at time of order (may differ from current product list price).
+        tests: [not_null]
+
+      - name: discount
+        description: Fractional discount applied (0.0 = no discount, 0.15 = 15% off).
+        tests: [not_null]
+
+      - name: freight
+        description: Shipping cost for the entire order, carried down to line-item level for aggregation.
+
+      - name: gross_revenue
+        description: Revenue before discount — quantity × unit_price. Rounded to 2 decimal places.
+
+      - name: net_revenue
+        description: Revenue after discount — quantity × unit_price × (1 - discount). The primary revenue KPI.
+
+      - name: discount_amount
+        description: Absolute value of revenue foregone due to the applied discount.
+
+      - name: discount_tier
+        description: "Human-readable discount bucket: 'No Discount', 'Light (1-5%)', 'Moderate (6-15%)', 'Heavy (16%+)'."
+
+      - name: is_late_shipment
+        description: TRUE if shipped_date > required_date. NULL if the order has not yet shipped.
+
+      - name: days_to_ship
+        description: Calendar days between order_date and shipped_date. NULL if not yet shipped.
+
+      - name: days_early_or_late
+        description: required_date minus shipped_date. Positive = shipped early, negative = shipped late.
+
+      - name: ship_country
+        description: Destination country for the shipment.
+
+      - name: ship_city
+        description: Destination city for the shipment.
+
+  # ── mart_sales_summary ────────────────────────────────────────────────────────
+  - name: mart_sales_summary
+    description: >
+      Pre-aggregated reporting mart at the grain of year-month × product category × customer country.
+      Designed for direct consumption by BI tools (Superset) without requiring heavy runtime joins.
+      Derived from fact_sales joined to dim_products, dim_customers, and dim_date.
+
+    columns:
+      - name: year
+        description: Calendar year of the orders in this row.
+      - name: quarter
+        description: Calendar quarter (1–4).
+      - name: quarter_name
+        description: Quarter label (Q1, Q2, Q3, Q4).
+      - name: month
+        description: Calendar month number (1–12).
+      - name: month_name
+        description: Full month name (e.g. January).
+      - name: year_month
+        description: Year-month string key in YYYY-MM format for time-series grouping.
+      - name: category_name
+        description: Product category (from dim_products).
+      - name: customer_country
+        description: Country of the customer who placed the orders.
+      - name: total_orders
+        description: Count of distinct orders in this group.
+      - name: distinct_products_sold
+        description: Count of distinct products sold in this group.
+      - name: total_units_sold
+        description: Total quantity of units sold in this group.
+      - name: total_gross_revenue
+        description: Sum of gross_revenue (before discount) for this group.
+      - name: total_net_revenue
+        description: Sum of net_revenue (after discount) for this group — primary revenue metric.
+      - name: total_discount_given
+        description: Sum of discount_amount — total value of discounts granted.
+      - name: avg_order_line_value
+        description: Average net_revenue per order line item in this group.
+      - name: avg_discount_pct
+        description: Weighted average discount percentage across all order lines in this group.
+
+  # ── bridge_employee_territories ──────────────────────────────────────────────
+  - name: bridge_employee_territories
+    description: >
+      Bridge table resolving the many-to-many relationship between employees and sales territories.
+      Each row represents one employee-territory assignment, enriched with territory description
+      and region details.
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [employee_id, territory_id]
+
+    columns:
+      - name: employee_id
+        description: Foreign key to dim_employees.
+        tests: [not_null]
+      - name: territory_id
+        description: Foreign key identifying the sales territory.
+        tests: [not_null]
+      - name: territory_description
+        description: Human-readable name of the sales territory.
+      - name: region_id
+        description: Foreign key to the region this territory belongs to.
+      - name: region_description
+        description: Human-readable name of the region.
+      - name: bridge_employee_territories_surrogate_key
+        description: Surrogate key generated from employee_id + territory_id + region_id.
+
+  # ── dim_customers ─────────────────────────────────────────────────────────────
+  - name: dim_customers
+    description: >
+      Customer dimension containing company identity, contact, and geographic information.
+      One row per customer. Used in fact_sales and mart_sales_summary.
+
+    columns:
+      - name: customer_id
+        description: Natural business key for the customer (5-char code, e.g. ALFKI).
+        tests: [unique, not_null]
+      - name: dim_customers_sk
+        description: Surrogate key generated from customer_id.
+        tests: [unique, not_null]
+      - name: company_name
+        description: Legal or trading name of the customer company.
+        tests: [not_null]
+      - name: contact_name
+        description: Primary contact person at the customer company.
+      - name: contact_title
+        description: Job title of the primary contact.
+      - name: address
+        description: Street address of the customer.
+      - name: city
+        description: City of the customer.
+      - name: region
+        description: State or regional subdivision of the customer address.
+      - name: postal_code
+        description: Postal or ZIP code.
+      - name: country
+        description: Country of the customer — key dimension for geographic analysis.
+      - name: phone
+        description: Customer phone number.
+      - name: fax
+        description: Customer fax number.
+
+  # ── dim_date ──────────────────────────────────────────────────────────────────
+  - name: dim_date
+    description: >
+      Date dimension covering 1996-01-01 through 1998-12-31, spanning the full Northwind
+      order date range. Generated using GENERATE_SERIES — no source table dependency.
+      Provides calendar attributes used for time-intelligence in BI tools.
+
+    columns:
+      - name: date_id
+        description: The full calendar date — primary key and join target from fact_sales date FKs.
+        tests: [unique, not_null]
+      - name: year
+        description: Calendar year (e.g. 1997).
+      - name: quarter
+        description: Quarter of year (1–4).
+      - name: quarter_name
+        description: Quarter label string (Q1, Q2, Q3, Q4).
+      - name: month
+        description: Month number (1–12).
+      - name: month_name
+        description: Full month name (e.g. July).
+      - name: month_short
+        description: Abbreviated month name (e.g. Jul).
+      - name: day
+        description: Day of the month (1–31).
+      - name: day_name
+        description: Full day name (e.g. Wednesday).
+      - name: day_short
+        description: Abbreviated day name (e.g. Wed).
+      - name: week_of_year
+        description: ISO week number within the year (1–53).
+      - name: day_of_week_num
+        description: Day of week as integer — 0=Sunday, 6=Saturday.
+      - name: is_weekend
+        description: TRUE if the date falls on Saturday or Sunday.
+      - name: is_weekday
+        description: TRUE if the date falls on Monday through Friday.
+      - name: year_month
+        description: Year-month key in YYYY-MM format, useful for monthly aggregation joins.
+
+  # ── dim_employees ─────────────────────────────────────────────────────────────
+  - name: dim_employees
+    description: >
+      Employee dimension enriched with computed full name, years of service, and
+      manager details via a self-join on the employees table.
+
+    columns:
+      - name: employee_id
+        description: Natural key for the employee.
+        tests: [unique, not_null]
+      - name: dim_employees_sk
+        description: Surrogate key generated from employee_id.
+        tests: [unique, not_null]
+      - name: first_name
+        description: Employee first name.
+      - name: last_name
+        description: Employee last name.
+      - name: full_name
+        description: Computed concatenation of first_name + last_name — for display in BI tools.
+      - name: title
+        description: Job title (e.g. Sales Representative).
+      - name: title_of_courtesy
+        description: Salutation (Mr., Ms., Dr., etc.).
+      - name: birth_date
+        description: Employee date of birth.
+      - name: hire_date
+        description: Date the employee was hired.
+      - name: years_of_service
+        description: Computed years between hire_date and today — a derived tenure metric.
+      - name: address
+        description: Home street address.
+      - name: city
+        description: Home city.
+      - name: region
+        description: Home state or region.
+      - name: postal_code
+        description: Home postal code.
+      - name: country
+        description: Home country.
+      - name: home_phone
+        description: Employee home phone number.
+      - name: extension
+        description: Office phone extension.
+      - name: reports_to
+        description: Employee ID of this employee's direct manager (NULL for top-level).
+      - name: manager_full_name
+        description: Full name of the direct manager, resolved via self-join.
+      - name: manager_title
+        description: Job title of the direct manager.
+      - name: notes
+        description: Free-text biographical notes about the employee.
+
+  # ── dim_products ──────────────────────────────────────────────────────────────
+  - name: dim_products
+    description: >
+      Product dimension enriched with category name and supplier details.
+      Tracks current pricing and inventory levels as of last load.
+
+    columns:
+      - name: product_id
+        description: Natural key for the product.
+        tests: [unique, not_null]
+      - name: dim_products_surrogate_key
+        description: Surrogate key generated from product_id + supplier_id + category_id.
+      - name: product_name
+        description: Name of the product.
+        tests: [not_null]
+      - name: supplier_id
+        description: Foreign key to the supplier.
+      - name: category_id
+        description: Foreign key to the product category.
+      - name: quantity_per_unit
+        description: Packaging description (e.g. "12 - 1 lb pkgs.").
+      - name: unit_price
+        description: Current list price per unit (may differ from the price at time of order in fact_sales).
+      - name: units_in_stock
+        description: Current inventory quantity.
+      - name: units_on_order
+        description: Quantity currently on open purchase orders from the supplier.
+      - name: reorder_level
+        description: Minimum stock threshold — reorder is needed when units_in_stock drops below this.
+      - name: discontinued
+        description: TRUE if the product is no longer offered for sale.
+      - name: category_name
+        description: Category name resolved from the categories table (e.g. Beverages, Seafood).
+      - name: supplier_company_name
+        description: Name of the product supplier company.
+      - name: supplier_city
+        description: City where the supplier is located.
+      - name: supplier_region
+        description: State or region of the supplier.
+      - name: supplier_country
+        description: Country where the supplier is located.
+
+  # ── dim_shippers ──────────────────────────────────────────────────────────────
+  - name: dim_shippers
+    description: >
+      Shipping carrier dimension. Small reference dimension — 3 carriers in Northwind.
+
+    columns:
+      - name: shipper_id
+        description: Natural key for the shipper.
+        tests: [unique, not_null]
+      - name: dim_shippers_sk
+        description: Surrogate key generated from shipper_id.
+        tests: [unique, not_null]
+      - name: company_name
+        description: Name of the shipping carrier (e.g. Federal Shipping, Speedy Express).
+        tests: [not_null]
+      - name: phone
+        description: Carrier contact phone number.

@@ -1,0 +1,91 @@
+version: 2
+
+exposures:
+
+  - name: northwind_sales_dashboard
+    label: "Northwind Sales Dashboard"
+    type: dashboard
+    maturity: medium
+    description: >
+      Primary Superset sales dashboard consuming the Northwind Gold layer.
+      Shows revenue trends by month/quarter, top customers, product category
+      performance, and geographic sales distribution.
+      Built on mart_sales_summary for time-series charts and fact_sales for
+      order-level drill-down.
+    owner:
+      name: Data Engineering
+      email: admin@example.com
+    url: http://localhost:8088
+    depends_on:
+      - ref('mart_sales_summary')
+      - ref('fact_sales')
+      - ref('dim_customers')
+      - ref('dim_products')
+      - ref('dim_date')
+
+  - name: northwind_employee_performance_dashboard
+    label: "Employee Performance Dashboard"
+    type: dashboard
+    maturity: low
+    description: >
+      Superset dashboard tracking sales representative performance.
+      Surfaces revenue per employee, late shipment rates, territory coverage,
+      and monthly run rates. Powered by mart_employee_performance.
+    owner:
+      name: Data Engineering
+      email: admin@example.com
+    url: http://localhost:8088
+    depends_on:
+      - ref('mart_employee_performance')
+      - ref('dim_employees')
+      - ref('bridge_employee_territories')
+
+  - name: northwind_customer_segments_dashboard
+    label: "Customer Segmentation Dashboard"
+    type: dashboard
+    maturity: low
+    description: >
+      Superset dashboard visualizing RFM customer segments. Shows segment
+      distribution, revenue contribution per segment, and churn risk indicators.
+      Powered by mart_customer_segments.
+    owner:
+      name: Data Engineering
+      email: admin@example.com
+    url: http://localhost:8088
+    depends_on:
+      - ref('mart_customer_segments')
+      - ref('dim_customers')
+
+  - name: northwind_logistics_dashboard
+    label: "Logistics & Shipping Dashboard"
+    type: dashboard
+    maturity: low
+    description: >
+      Superset dashboard monitoring carrier reliability and shipping performance
+      over time. Tracks on-time rates, avg days to ship, freight costs, and
+      route coverage per carrier. Powered by mart_shipping_performance.
+    owner:
+      name: Data Engineering
+      email: admin@example.com
+    url: http://localhost:8088
+    depends_on:
+      - ref('mart_shipping_performance')
+      - ref('dim_shippers')
+
+  - name: northwind_inventory_dashboard
+    label: "Inventory & Product Dashboard"
+    type: dashboard
+    maturity: low
+    description: >
+      Superset dashboard for product and inventory management. Highlights
+      low-stock alerts, discontinued product analysis, top/bottom performers
+      by revenue, and actual vs list price comparisons.
+      Powered by mart_product_performance.
+    owner:
+      name: Data Engineering
+      email: admin@example.com
+    url: http://localhost:8088
+    depends_on:
+      - ref('mart_product_performance')
+      - ref('dim_products')
+      - ref('dim_suppliers')

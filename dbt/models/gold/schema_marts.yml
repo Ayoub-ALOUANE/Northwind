@@ -1,0 +1,263 @@
+version: 2
+
+models:
+
+  # ── dim_suppliers ─────────────────────────────────────────────────────────────
+  - name: dim_suppliers
+    description: >
+      Supplier dimension enriched with derived metrics from the products table:
+      total products supplied, active vs discontinued counts, and price range.
+      One row per supplier.
+
+    columns:
+      - name: supplier_id
+        description: Natural key for the supplier.
+        tests: [unique, not_null]
+      - name: dim_suppliers_sk
+        description: Surrogate key generated from supplier_id.
+        tests: [unique, not_null]
+      - name: company_name
+        description: Legal name of the supplier company.
+        tests: [not_null]
+      - name: contact_name
+        description: Primary contact person at the supplier.
+      - name: contact_title
+        description: Job title of the primary contact.
+      - name: address
+        description: Street address of the supplier.
+      - name: city
+        description: City where the supplier is located.
+      - name: region
+        description: State or regional subdivision.
+      - name: postal_code
+        description: Postal code of the supplier.
+      - name: country
+        description: Country where the supplier operates.
+      - name: phone
+        description: Supplier phone number.
+      - name: fax
+        description: Supplier fax number.
+      - name: homepage
+        description: Supplier website URL.
+      - name: total_products_supplied
+        description: Count of all products (active + discontinued) this supplier provides.
+      - name: active_products_supplied
+        description: Count of non-discontinued products currently offered by this supplier.
+      - name: discontinued_products
+        description: Count of products from this supplier that have been discontinued.
+      - name: avg_product_price
+        description: Average list price across all products from this supplier.
+      - name: min_product_price
+        description: Lowest list price among this supplier's products.
+      - name: max_product_price
+        description: Highest list price among this supplier's products.
+
+  # ── mart_product_performance ──────────────────────────────────────────────────
+  - name: mart_product_performance
+    description: >
+      Product-grain performance mart combining dim_products attributes with
+      all-time sales aggregations from fact_sales. Includes stock status,
+      actual average selling price vs current list price, and late shipment rate.
+      Designed for inventory planning and pricing analysis dashboards.
+
+    columns:
+      - name: product_id
+        description: Natural key for the product.
+        tests: [unique, not_null]
+      - name: product_name
+        description: Name of the product.
+      - name: category_name
+        description: Product category.
+      - name: supplier_company_name
+        description: Name of the supplier.
+      - name: supplier_country
+        description: Country of the supplier.
+      - name: current_list_price
+        description: Current published unit price (as of last load).
+      - name: units_in_stock
+        description: Current inventory level.
+      - name: units_on_order
+        description: Units on open purchase orders.
+      - name: reorder_level
+        description: Stock threshold below which reordering is triggered.
+      - name: discontinued
+        description: TRUE if the product is no longer offered.
+      - name: stock_status
+        description: "Derived label: 'Out of Stock', 'Low Stock', or 'In Stock'."
+      - name: total_order_lines
+        description: Total number of order line items for this product across all orders.
+      - name: total_units_sold
+        description: Total quantity of units sold across all time.
+      - name: total_gross_revenue
+        description: Total gross revenue (before discount) across all time.
+      - name: total_net_revenue
+        description: Total net revenue (after discount) across all time.
+      - name: total_discount_given
+        description: Total absolute discount value granted across all time.
+      - name: avg_line_value
+        description: Average net revenue per order line.
+      - name: avg_quantity_per_line
+        description: Average units ordered per line item.
+      - name: avg_discount_rate
+        description: Average fractional discount rate applied across all orders.
+      - name: overall_discount_pct
+        description: Weighted discount percentage — total discounts / total gross revenue × 100.
+      - name: late_shipments
+        description: Count of order lines where the shipment was late.
+      - name: on_time_shipments
+        description: Count of order lines where the shipment was on time.
+      - name: late_shipment_rate_pct
+        description: Percentage of shipped lines that were late.
+      - name: actual_avg_selling_price
+        description: Total net revenue divided by total units sold — effective selling price.
+      - name: price_vs_list_gap
+        description: Difference between current list price and actual average selling price. Positive = sold below list.
+      - name: first_order_date
+        description: Date of the first order ever placed for this product.
+      - name: last_order_date
+        description: Date of the most recent order for this product.
+
+  # ── mart_employee_performance ─────────────────────────────────────────────────
+  - name: mart_employee_performance
+    description: >
+      Employee-grain performance mart combining employee attributes, territory
+      coverage (via bridge table), and all-time sales KPIs including revenue,
+      order volume, shipping performance, and monthly run rate.
+
+    columns:
+      - name: employee_id
+        description: Natural key for the employee.
+        tests: [unique, not_null]
+      - name: full_name
+        description: Employee full name.
+      - name: title
+        description: Employee job title.
+      - name: hire_date
+        description: Date the employee was hired.
+      - name: years_of_service
+        description: Computed tenure in years.
+      - name: country
+        description: Employee home country.
+      - name: city
+        description: Employee home city.
+      - name: manager_full_name
+        description: Full name of the employee's direct manager.
+      - name: territory_count
+        description: Number of sales territories assigned to this employee.
+      - name: regions_covered
+        description: Comma-separated list of distinct region names covered by the employee.
+      - name: total_orders
+        description: Total distinct orders handled by this employee.
+      - name: unique_customers_served
+        description: Number of distinct customers this employee has sold to.
+      - name: unique_products_sold
+        description: Number of distinct products this employee has sold.
+      - name: total_units_sold
+        description: Total quantity of units sold by this employee.
+      - name: active_months
+        description: Number of distinct calendar months in which this employee made at least one sale.
+      - name: total_gross_revenue
+        description: Total gross revenue generated by this employee across all time.
+      - name: total_net_revenue
+        description: Total net revenue generated by this employee across all time.
+      - name: avg_order_value
+        description: Average net revenue per distinct order.
+      - name: avg_monthly_revenue
+        description: Total net revenue divided by active months — monthly run rate.
+      - name: late_shipment_rate_pct
+        description: Percentage of this employee's shipments that were delivered late.
+      - name: avg_days_to_ship
+        description: Average calendar days between order date and ship date for this employee.
+      - name: first_order_date
+        description: Date of the first order this employee handled.
+      - name: last_order_date
+        description: Date of the most recent order this employee handled.
+
+  # ── mart_shipping_performance ─────────────────────────────────────────────────
+  - name: mart_shipping_performance
+    description: >
+      Carrier-by-month grain mart tracking shipper reliability and volume over time.
+      Covers late shipment rates, average delivery speed, freight revenue, and
+      country coverage per carrier per month.
+
+    columns:
+      - name: shipper_id
+        description: Natural key for the shipper.
+      - name: shipper_name
+        description: Name of the shipping carrier.
+      - name: year
+        description: Calendar year.
+      - name: month
+        description: Calendar month number.
+      - name: month_name
+        description: Full month name.
+      - name: year_month
+        description: Year-month key (YYYY-MM).
+      - name: total_shipments
+        description: Number of distinct orders shipped by this carrier in this month.
+      - name: countries_served
+        description: Number of distinct destination countries served this month.
+      - name: total_revenue_shipped
+        description: Total net revenue of orders this carrier handled in this month.
+      - name: total_freight_charged
+        description: Total freight cost charged for shipments in this month.
+      - name: late_shipment_rate_pct
+        description: Percentage of this carrier's shipments that were late this month.
+      - name: avg_days_to_ship
+        description: Average days from order date to ship date for this carrier this month.
+      - name: avg_days_early_or_late
+        description: Average days early (positive) or late (negative) vs required date.
+      - name: min_days_to_ship
+        description: Fastest shipment this carrier made this month.
+      - name: max_days_to_ship
+        description: Slowest shipment this carrier made this month.
+
+  # ── mart_customer_segments ────────────────────────────────────────────────────
+  - name: mart_customer_segments
+    description: >
+      RFM (Recency, Frequency, Monetary) customer segmentation mart. Each customer
+      receives R/F/M scores (1–3) derived from percentile bucketing, a composite
+      RFM total score, and a human-readable segment label (Champions, Loyal Customers,
+      At Risk, Lost High Value, etc.). Designed for CRM and marketing analytics.
+
+    columns:
+      - name: customer_id
+        description: Natural key for the customer.
+        tests: [unique, not_null]
+      - name: company_name
+        description: Customer company name.
+      - name: country
+        description: Customer country.
+      - name: r_score
+        description: Recency score 1–3. Score of 3 = purchased most recently.
+      - name: f_score
+        description: Frequency score 1–3. Score of 3 = placed the most orders.
+      - name: m_score
+        description: Monetary score 1–3. Score of 3 = highest total spend.
+      - name: rfm_total_score
+        description: Sum of R + F + M scores (3–9). Higher = more valuable customer.
+      - name: customer_segment
+        description: >
+          Human-readable segment label derived from RFM scores.
+          Values: Champions, Loyal Customers, Recent Customers, Big Spenders,
+          At Risk, Lost High Value, Needs Attention.
+      - name: recency_days
+        description: Days since last order (relative to 1998-12-31 dataset end). Lower = more recent.
+      - name: total_orders
+        description: Total number of distinct orders placed by this customer.
+      - name: active_months
+        description: Number of months in which this customer placed at least one order.
+      - name: first_order_date
+        description: Date of this customer's first order.
+      - name: last_order_date
+        description: Date of this customer's most recent order.
+      - name: total_net_revenue
+        description: Total net revenue attributed to this customer across all time.
+      - name: avg_order_value
+        description: Average net revenue per order.
+      - name: avg_discount_rate
+        description: Average discount rate across all this customer's orders.
+      - name: unique_products
+        description: Number of distinct products this customer has ordered.
+      - name: unique_categories
+        description: Number of distinct product categories this customer has ordered from.

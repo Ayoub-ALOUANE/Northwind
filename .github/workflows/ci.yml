@@ -1,0 +1,74 @@
+name: CI - Northwind Data Platform
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  validate-airflow:
+    name: Airflow DAG Integrity Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Test Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+
+      - name: Run DAG Tests
+        run: |
+          pytest tests/test_airflow_dags.py -v
+
+  lint-sql:
+    name: SQLFluff Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install SQLFluff
+        run: |
+          python -m pip install --upgrade pip
+          pip install sqlfluff sqlfluff-templater-dbt dbt-postgres
+
+      - name: Lint dbt SQL Models
+        run: |
+          sqlfluff lint dbt/models --config .sqlfluff || true
+
+  validate-dbt:
+    name: dbt Validation & Compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dbt
+        run: |
+          python -m pip install --upgrade pip
+          pip install dbt-core==1.12.0 dbt-postgres==1.11.0
+
+      - name: Verify dbt Dependencies & Syntax
+        run: |
+          cd dbt
+          dbt deps --profiles-dir profiles --target ci
+          dbt parse --profiles-dir profiles --target ci

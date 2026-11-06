@@ -1,0 +1,11 @@
+services:
+  dbt-docs:
+    image: nginx:alpine
+    container_name: dbt-docs
+    restart: unless-stopped
+    ports:
+      - "8085:80"
+    volumes:
+      - ../dbt/target:/usr/share/nginx/html:ro
+    networks:
+      - data-platform

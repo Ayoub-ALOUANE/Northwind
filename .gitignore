@@ -5,6 +5,8 @@ logs/
 
 # Environment variables
 .env
+.env.bak
+*.env
 
 # Python cache
 __pycache__/
@@ -17,3 +19,17 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Report / thesis documents (not for public repo)
+report_latex/
+report_latex-/
+report_latex.zip
+
+# Backup files
+*.bak
+
+# Temporary test scripts
+scripts/simulate_superset_400.py
+
+# Misc stale artifacts
+docs/Silver.png

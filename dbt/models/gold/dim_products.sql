@@ -15,7 +15,9 @@ SELECT
     su.company_name AS supplier_company_name,
     su.city AS supplier_city,
     su.region AS supplier_region,
-    su.country AS supplier_country
+    su.country AS supplier_country,
+
+    {{dbt_utils.generate_surrogate_key(['pr.product_id', 'pr.supplier_id', 'pr.category_id'])}} dim_products_surrogate_key
 
 FROM {{ ref('products') }} AS pr
 LEFT JOIN {{ ref('categories') }} AS ca

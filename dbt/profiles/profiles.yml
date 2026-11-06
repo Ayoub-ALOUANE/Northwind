@@ -1,7 +1,22 @@
 northwind:
-  target: dev
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
 
   outputs:
+
+    # ── Snowflake target (Cloud Data Warehouse) ──────────────────────────────
+    snowflake:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'ACCOUNTADMIN') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'NORTHWIND') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', 'SILVER') }}"
+      threads: 4
+      client_session_keep_alive: False
+
+    # ── Docker / Container target (used by Airflow inside Docker network) ──────
     dev:
       type: postgres
       host: postgres-warehouse
@@ -11,3 +26,26 @@ northwind:
       dbname: warehouse
       schema: silver
       threads: 4
+
+    # ── Local development target (run dbt from your host machine) ─────────────
+    # Connect via the exposed port 55433 on localhost
+    local:
+      type: postgres
+      host: localhost
+      user: postgres
+      password: postgres
+      port: 55433
+      dbname: warehouse
+      schema: silver
+      threads: 2
+
+    # ── CI target (lower thread count for constrained runners) ────────────────
+    ci:
+      type: postgres
+      host: "{{ env_var('DBT_HOST', 'postgres-warehouse') }}"
+      user: "{{ env_var('DBT_USER', 'postgres') }}"
+      password: "{{ env_var('DBT_PASSWORD', 'postgres') }}"
+      port: "{{ env_var('DBT_PORT', '5432') | int }}"
+      dbname: "{{ env_var('DBT_DBNAME', 'warehouse') }}"
+      schema: silver
+      threads: 1

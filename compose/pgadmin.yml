@@ -11,7 +11,7 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: "False"
 
     ports:
-      - "5050:5050"
+      - "5051:5050"
 
     volumes:
       - pgadmin_root:/root/.pgadmin

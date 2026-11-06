@@ -1,0 +1,37 @@
+version: 2
+
+seeds:
+  - name: country_region_mapping
+    description: >
+      Reference lookup mapping each customer country found in the Northwind dataset
+      to a world region (Americas, Europe, Asia-Pacific) and sub-region
+      (e.g. Western Europe, South America). Used for geographic aggregations in mart models.
+    columns:
+      - name: country
+        description: Country name as it appears in the customers table.
+        tests: [unique, not_null]
+      - name: world_region
+        description: "High-level geographic region: Americas, Europe, or Asia-Pacific."
+        tests: [not_null]
+      - name: sub_region
+        description: "More granular regional grouping: e.g. Western Europe, South America, Oceania."
+        tests: [not_null]
+
+  - name: discount_tiers
+    description: >
+      Reference lookup defining the boundaries and labels for discount tier classification.
+      Used to assign a human-readable tier label to any given discount fraction in fact_sales
+      without repeating CASE logic across models.
+    columns:
+      - name: discount_min
+        description: Lower bound (inclusive) of the discount range for this tier.
+        tests: [not_null]
+      - name: discount_max
+        description: Upper bound (inclusive) of the discount range for this tier.
+        tests: [not_null]
+      - name: tier_label
+        description: "Human-readable tier name: No Discount, Light (1-5%), Moderate (6-15%), Heavy (16%+)."
+        tests: [unique, not_null]
+      - name: tier_order
+        description: Integer sort order for the tier (1=lowest discount, 4=highest).
+        tests: [not_null]

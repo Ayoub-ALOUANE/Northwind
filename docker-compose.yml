@@ -4,4 +4,5 @@ include:
   - compose/airbyte.yml
   - compose/pgadmin.yml
   - compose/superset.yml
+  - compose/dbt_docs.yml
   - compose/infrastructure.yml

@@ -13,6 +13,14 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api-server:8080/execution/
     AIRFLOW__API__SECRET_KEY: ${AIRFLOW__API__SECRET_KEY}
     AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW__API_AUTH__JWT_SECRET}
+    DBT_TARGET: ${DBT_TARGET:-dev}
+    SNOWFLAKE_ACCOUNT: ${SNOWFLAKE_ACCOUNT:-}
+    SNOWFLAKE_USER: ${SNOWFLAKE_USER:-}
+    SNOWFLAKE_PASSWORD: ${SNOWFLAKE_PASSWORD:-}
+    SNOWFLAKE_ROLE: ${SNOWFLAKE_ROLE:-ACCOUNTADMIN}
+    SNOWFLAKE_DATABASE: ${SNOWFLAKE_DATABASE:-NORTHWIND}
+    SNOWFLAKE_WAREHOUSE: ${SNOWFLAKE_WAREHOUSE:-COMPUTE_WH}
+    SNOWFLAKE_SCHEMA: ${SNOWFLAKE_SCHEMA:-SILVER}
 
   volumes:
     - ../airflow/dags:/opt/airflow/dags
@@ -57,6 +65,9 @@ services:
     command: airflow scheduler
 
     restart: unless-stopped
+
+    ports:
+      - "8586:8586"
 
 
   airflow-api-server:
